@@ -1,0 +1,68 @@
+rag-project/
+│
+├── data/
+│   ├── raw/
+│   │   ├── document1.pdf
+│   │   └── document2.pdf
+│   │
+│   ├── processed/
+│   │   ├── document1.txt
+│   │   └── document2.txt
+│   │
+│   └── chunks/
+│       └── chunks.json
+│
+├── vector_store/
+│
+├── src/
+│   ├── ingestion/
+│   │   ├── loader.py
+│   │   ├── cleaner.py
+│   │   └── chunker.py
+│   │
+│   ├── indexing/
+│   │   └── indexer.py
+│   │
+│   ├── retrieval/
+│   │   ├── retriever.py
+│   │   └── reranker.py
+│   │
+│   ├── generation/
+│   │   └── generator.py
+│   │
+│   └── main.py
+│
+├── tests/
+│
+├── .env
+├── requirements.txt
+└── README.md
+
+
+
+                INGESTION
+                    │
+PDF → Load → Clean → Chunk
+                    │
+                    ▼
+                INDEXING
+                    │
+              ┌─────┴─────┐
+              ↓           ↓
+          Embedding    Vector Store
+              │           │
+              └─────┬─────┘
+                    ↓
+               FAISS INDEX
+                    │
+                    ▼
+                RETRIEVAL
+                    │
+                    ↓
+                 RANKING
+                    │
+                    ↓
+               RERANKING
+                    │
+                    ↓
+               GENERATION
