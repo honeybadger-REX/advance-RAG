@@ -1,25 +1,47 @@
 import faiss
-import numpy as np 
+import numpy as np
 import os
+import json
 
-def indexing(embedding):
-     embeddings = np.array(embedding).astype("float32")
-     dimension = embeddings.shape[1]
-     index = faiss.IndexFlatL2(dimension)
-     index.add(embeddings)
-     return index
+from src.ingestion.loader import loader
+from src.ingestion.chunker import chunking
+from src.indexing.embedding import embedding
 
-def save_index(index, chunks):
-    """
-    Save FAISS index and original chunks.
-    """
 
-    os.makedirs("vector_store", exist_ok=True)
+def indexing(embeddings):
+
+    embeddings = np.array(
+        embeddings
+    ).astype("float32")
+
+    dimension = embeddings.shape[1]
+
+    # Create FAISS index using L2 distance
+    index = faiss.IndexFlatL2(
+        dimension
+    )
+
+    # Add vectors to index
+    index.add(embeddings)
+
+    print("Embedding shape:", embeddings.shape)
+    print("Vector dimension:", dimension)
+    print("Vectors indexed:", index.ntotal)
+
+    return index
+
+
+def save_index(index, chunks,file_path):
+
+    os.makedirs(
+        "vector_store",
+        exist_ok=True
+    )
 
     # Save FAISS index
     faiss.write_index(
         index,
-        "vector_store/index.faiss"
+        f"vector_store/index{file_path}.faiss"
     )
 
     # Save original chunks
@@ -31,10 +53,45 @@ def save_index(index, chunks):
         for chunk in chunks
     ]
 
-    with open("vector_store/chunks.json","w", encoding="utf-8") as file:
+    with open(
+        f"vector_store/chunks{file_path}.json",
+        "w",
+        encoding="utf-8"
+    ) as file:
+
         json.dump(
             chunk_data,
             file,
             ensure_ascii=False,
             indent=2
         )
+
+    print("Index saved successfully.")
+
+
+if __name__ == "__main__":
+
+    document = loader(
+        r"C:\Users\HP\Downloads\Priyansh_Patel_AI_ML_Resume_New.pdf"
+    )
+
+    # Chunking
+    an = chunking(
+        document["document"]
+    )
+
+    # Embedding
+    em = embedding(
+        chunks=an["chunk"]
+    )
+
+    # FAISS indexing
+    index = indexing(
+        em["embedding"]
+    )
+
+    # Save index + chunks
+    save_index(
+        index,
+        an["chunk"]
+    )

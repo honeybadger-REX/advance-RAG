@@ -9,3 +9,6 @@ def loader(FILE_PATH):
         "lenght": len(document)
     }
 
+if __name__ == "__main__":
+    returns = loader(input(str).strip())
+    print(returns["document"])

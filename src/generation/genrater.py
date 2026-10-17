@@ -1,25 +1,30 @@
 from langchain_openai import ChatOpenAI
+from src.generation.context_builder import build_context
+from src.retrieval.retriever import reviewer
 
 
-# Load LLM
-llm = ChatOpenAI(
-    model="gpt-4o-mini",
-    temperature=0
+
+from transformers import AutoTokenizer, AutoModelForCausalLM
+import torch
+
+
+model_name = "Qwen/Qwen2.5-0.5B-Instruct"
+
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+model = AutoModelForCausalLM.from_pretrained(
+    model_name,
+    torch_dtype="auto",
+    device_map="auto"
 )
 
 
 def generate_answer(query, context):
-    """
-    Generate an answer using the retrieved context.
-    """
 
     prompt = f"""
 You are a helpful AI assistant.
 
-Answer the user's question using ONLY the provided context.
-
-If the answer cannot be found in the context,
-say that you don't have enough information.
+Answer the question using ONLY the provided context.
 
 Context:
 {context}
@@ -30,6 +35,43 @@ Question:
 Answer:
 """
 
-    response = llm.invoke(prompt)
+    messages = [
+        {
+            "role": "user",
+            "content": prompt
+        }
+    ]
 
-    return response.content
+    text = tokenizer.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True
+    )
+
+    inputs = tokenizer(
+        text,
+        return_tensors="pt"
+    ).to(model.device)
+
+    outputs = model.generate(
+        **inputs,
+        max_new_tokens=300,
+          do_sample=False
+    )
+
+    answer = tokenizer.decode(
+        outputs[0][inputs["input_ids"].shape[1]:],
+        skip_special_tokens=True
+    )
+
+    return answer
+
+
+
+if __name__ == "__main__" :
+    result = reviewer("what is priyansh skilles","vector_store\indexgujarat_police_camera_streaming_setup_guide.faiss","vector_store\chunksgujarat_police_camera_streaming_setup_guide.json",3)
+    context =  build_context(result)
+    r = generate_answer("what is priyansh skilles",context)
+    print(r)
+
+    
