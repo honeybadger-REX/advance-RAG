@@ -7,9 +7,7 @@ from src.retrieval.reranker import rerank
 from src.generation.context_builder import build_context
 from src.generation.genrater import generate_answer
 from src.evaluator.corrective_reranking import corrective_reranking
-from src.evaluator. evaluate_retrieval import  evaluate_retrieval
-
-
+from src.evaluator.evaluate_retrieval import evaluate_retrieval
 
 from pydantic import BaseModel
 from fastapi import FastAPI, UploadFile, File
@@ -19,7 +17,6 @@ import shutil
 
 
 app = FastAPI()
-
 rag = None
 
 
@@ -37,31 +34,27 @@ class RAG_pipleline:
 
         self.index = None
 
+
     def pdf_CEIIS(self):
 
-        # Loading
         document = loader(self.filepath)
 
-        # Chunking
         an = chunking(document["document"])
 
-        # Embedding
         em = embedding(
             chunks=an["chunk"]
         )
 
-        # FAISS indexing
         self.index = indexing(
             em["embedding"]
         )
 
-        # Save index + chunks
         save_index(
-    self.index,
-    an["chunk"],
-    self.index_pt,
-    self.chunks_pt
-)
+            self.index,
+            an["chunk"],
+            self.index_pt,
+            self.chunks_pt
+        )
 
         print("PDF processing completed.")
 
@@ -70,17 +63,27 @@ class RAG_pipleline:
             "document": self.name
         }
 
-    def evaluator(self,result):
-        result1 = evaluate_retrieval(result,0.3)
-        if result1 is None:
-            print("result was not thier")
-            return "break"
+
+    def evaluator(self, result):
+
+        result1 = evaluate_retrieval(
+            result,
+            0.2
+        )
+
         if result1 == "good":
             return result
-        else:
-            return corrective_reranking(result, self.index_pt,self.chunks_pt,4)
 
+        print("Initial retrieval was bad.")
+        print("Starting corrective retrieval...")
 
+        corrected_result = corrective_reranking(
+            self.index_pt,
+            self.chunks_pt,
+            4
+        )
+
+        return corrected_result
 
 
     def genrater(self, promt):
@@ -88,28 +91,67 @@ class RAG_pipleline:
         print("Index:", self.index_pt)
         print("Chunks:", self.chunks_pt)
 
-        # Retrieval
+        # Initial retrieval
         result = reviewer(
             promt,
             self.index_pt,
             self.chunks_pt,
             8
         )
-        result = rerank(promt, result, top_k=5)
-        result = self.evaluator(result)
-        if result == "bad":
-            print("chunk were go bad to  answer")
-            break 
-            return "I couldn't find enough relevant information in the uploaded document."
-        else:
-            print("we got result:", result)
 
-        # Context construction
+        print("Initial retrieval:", result)
+
+        # Initial reranking
+        result = rerank(
+            promt,
+            result,
+            top_k=5
+        )
+
+        print("Initial reranking:", result)
+
+        # Evaluate retrieval
+        status = evaluate_retrieval(
+            result,
+            0.3
+        )
+
+        # If retrieval is bad, try corrective retrieval
+        if status == "bad":
+
+            print("Chunks were not good.")
+            print("Running corrective retrieval...")
+
+            result = corrective_reranking(
+                promt,
+                self.index_pt,
+                self.chunks_pt,
+                4
+            )
+
+            # If corrective retrieval also fails
+            if result == "bad":
+
+                print("Corrective retrieval also failed.")
+
+                return {
+                    "answer": "I couldn't find enough relevant information in the uploaded document.",
+                    "source": "document"
+                }
+
+            print("Corrective retrieval succeeded.")
+
+        else:
+
+            print("Initial retrieval was good.")
+
+        # Build context only after retrieval is accepted
         context = build_context(result)
 
-        print("we got context:", context)
+        print("We got context:")
+        print(context)
 
-        # Generation
+        # Generate answer
         answer = generate_answer(
             promt,
             context
@@ -117,11 +159,16 @@ class RAG_pipleline:
 
         print("Generated answer:", answer)
 
-        return answer
+        return {
+            "answer": answer,
+            "source": "document"
+        }
 
 
 @app.post("/upload")
-async def upload_pdf(file: UploadFile = File(...)):
+async def upload_pdf(
+    file: UploadFile = File(...)
+):
 
     global rag
 
@@ -132,7 +179,11 @@ async def upload_pdf(file: UploadFile = File(...)):
 
     filepath = f"data/raw/{file.filename}"
 
-    with open(filepath, "wb") as buffer:
+    with open(
+        filepath,
+        "wb"
+    ) as buffer:
+
         shutil.copyfileobj(
             file.file,
             buffer
@@ -149,6 +200,7 @@ async def upload_pdf(file: UploadFile = File(...)):
 
 
 class querry(BaseModel):
+
     querry: str
 
 
@@ -156,16 +208,13 @@ class querry(BaseModel):
 def answer(promt: querry):
 
     if rag is None:
+
         return {
             "error": "Please upload a PDF first."
         }
 
     print(promt)
 
-    return {
-        "answer": rag.genrater(
-            promt.querry
-        )
-    }
-
-
+    return rag.genrater(
+        promt.querry
+    )

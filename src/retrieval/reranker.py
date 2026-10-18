@@ -1,8 +1,10 @@
 from sentence_transformers import CrossEncoder
 
+
 reranker = CrossEncoder(
     "cross-encoder/ms-marco-MiniLM-L-6-v2"
 )
+
 
 def rerank(query, results, top_k=4):
 
@@ -19,7 +21,7 @@ def rerank(query, results, top_k=4):
 
         reranked.append({
             "text": result["text"],
-            "page": result["page"],
+            "page": result["metadata"]["page"],
             "score": float(score)
         })
 

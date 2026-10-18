@@ -1,4 +1,4 @@
-from src.retieval.retriever import reviewer as retrieve
+from src.retrieval.retriever import reviewer as retrieve
 
 def corrective_retrieval(query,index_path,chunk_path,k=5):
 

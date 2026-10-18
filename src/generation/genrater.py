@@ -17,7 +17,7 @@ model = AutoModelForCausalLM.from_pretrained(
     torch_dtype="auto",
     device_map="auto"
 )
-model.to("cpu")
+
 
 
 def generate_answer(query, context):
