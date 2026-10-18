@@ -4,8 +4,8 @@ from src.ingestion.loader import loader
 def chunking(document):
 
     splitter = RecursiveCharacterTextSplitter(
-    chunk_size=20,
-    chunk_overlap=5,
+    chunk_size=50,
+    chunk_overlap=15,
     add_start_index = True,
     separators=["\n\n", "\n", ". ", " ", ""]
 )

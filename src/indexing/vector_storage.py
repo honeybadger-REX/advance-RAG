@@ -31,7 +31,7 @@ def indexing(embeddings):
     return index
 
 
-def save_index(index, chunks,file_path):
+def save_index(index, chunks,index_path,chunk_path):
 
     os.makedirs(
         "vector_store",
@@ -41,7 +41,7 @@ def save_index(index, chunks,file_path):
     # Save FAISS index
     faiss.write_index(
         index,
-        f"vector_store/index{file_path}.faiss"
+        index_path
     )
 
     # Save original chunks
@@ -53,11 +53,7 @@ def save_index(index, chunks,file_path):
         for chunk in chunks
     ]
 
-    with open(
-        f"vector_store/chunks{file_path}.json",
-        "w",
-        encoding="utf-8"
-    ) as file:
+    with open(chunk_path,"w",encoding="utf-8") as file:
 
         json.dump(
             chunk_data,
